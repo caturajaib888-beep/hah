@@ -2,7 +2,6 @@
 .env.*
 !.env.example
 node_modules/
-desktop-tutorial/
 data/bot.db
 data/*.db-shm
 data/*.db-wal
