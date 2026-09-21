@@ -4,7 +4,7 @@ const { PermissionFlagsBits } = require('discord.js');
 const { getCommandDetails, getAdminCommands, isKingflexCommand, isCmdhelpVisibleCommand, getHelpCategory } = require('../utils/helpMenus');
 const { getProtectedGuildIds, validateBotSafetyConfig } = require('../utils/safety');
 const { isBotCommandAllowedWhileDisabled, isCoinEconomyEnabled, isCoinCommandAllowedWhileDisabled } = require('../utils/commandAccess');
-const { isTrueOwner, getTrueOwnerId, isTrustedUser, getTrustedUserIds } = require('../utils/owner');
+const { isTrueOwner, getTrueOwnerId, getTrustedUserIds, isTrustedUser, authorizeOwnerCommand } = require('../utils/owner');
 const banCommand = require('../commands/admin only/ban');
 const kickCommand = require('../commands/admin only/kick');
 const banallCommand = require('../commands/admin only/banall');
@@ -217,4 +217,21 @@ test('two-item owner list defaults to first owner and second trusted user', () =
   assert.equal(isTrueOwner('1364628748695240847'), false);
   assert.equal(isTrustedUser('1364628748695240847'), true);
   assert.deepEqual(getTrustedUserIds(), ['1364628748695240847']);
+});
+
+test('all configured owners can use grantaccess', async () => {
+  process.env.TRUE_OWNER_ID = '1203862285874110486';
+  process.env.OWNER_IDS = '1203862285874110486,1364628748695240847';
+
+  const authorized = await authorizeOwnerCommand({
+    author: { id: '1364628748695240847' },
+    guild: { id: 'guild-id' }
+  }, {
+    commandName: 'grantaccess',
+    requiredPermissions: [PermissionFlagsBits.ManageGuild],
+    requireApproval: true,
+    allowAllOwners: true
+  });
+
+  assert.equal(authorized, true);
 });

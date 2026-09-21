@@ -237,7 +237,7 @@ async function requestOwnerAccess(message, { commandName, requiredPermissions = 
   return false;
 }
 
-async function authorizeOwnerCommand(message, { commandName, requiredPermissions = [], requireApproval = false }) {
+async function authorizeOwnerCommand(message, { commandName, requiredPermissions = [], requireApproval = false, allowAllOwners = false }) {
   clearExpiredRequests();
 
   const userId = message?.author?.id;
@@ -245,6 +245,10 @@ async function authorizeOwnerCommand(message, { commandName, requiredPermissions
 
   const trueOwnerId = getTrueOwnerId();
   if (userId === trueOwnerId) {
+    return true;
+  }
+
+  if (allowAllOwners && isOwner(userId)) {
     return true;
   }
 

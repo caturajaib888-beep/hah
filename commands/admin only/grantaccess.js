@@ -54,7 +54,7 @@ module.exports = {
   requiredPermissions: [PermissionFlagsBits.ManageGuild],
 
   async execute(message, args) {
-    if (!(await authorizeOwnerCommand(message, { commandName: 'grantaccess', requiredPermissions: [PermissionFlagsBits.ManageGuild], requireApproval: true }))) {
+    if (!(await authorizeOwnerCommand(message, { commandName: 'grantaccess', requiredPermissions: [PermissionFlagsBits.ManageGuild], requireApproval: true, allowAllOwners: true }))) {
       return;
     }
 
