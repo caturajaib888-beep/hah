@@ -1,27 +1,23 @@
 const { EmbedBuilder } = require('discord.js');
 const { ensureUser, ensureBaits, getBaits, addBait, addCoins, deductCoins, getUser } = require('../../database');
 
-const COST_PER_ROLL = 100;
+const DEFAULT_STAKE = 1;
 const REWARD_TABLE = [
-  { type: 'owner_bait', chance: 1 },
-  { type: 'bait_containers', chance: 30 },
-  { type: 'common_bait', chance: 40 },
-  { type: 'uncommon_bait', chance: 15 },
-  { type: 'rare_bait', chance: 8 },
-  { type: 'epic_bait', chance: 4 },
-  { type: 'legendary_bait', chance: 3 },
-  { type: 'mythical_bait', chance: 2 }
+  { type: 'double', chance: 45 },
+  { type: 'container', chance: 30 },
+  { type: 'triple', chance: 20 },
+  { type: 'nothing', chance: 5 }
 ];
 
-function parseSpendAmount(input) {
-  if (!input || typeof input !== 'string') return COST_PER_ROLL;
+function parseSpendAmount(input, currentCoins) {
+  if (!input || typeof input !== 'string') return DEFAULT_STAKE;
 
   const normalized = input.replace(/,/g, '').trim().toLowerCase();
-  if (!normalized) return COST_PER_ROLL;
-  if (normalized === 'all') return 'all';
+  if (!normalized) return DEFAULT_STAKE;
+  if (normalized === 'all') return Math.max(1, currentCoins || 1);
 
   const parsed = Number.parseInt(normalized, 10);
-  if (!Number.isInteger(parsed) || parsed < COST_PER_ROLL) return null;
+  if (!Number.isInteger(parsed) || parsed < 1) return null;
   return parsed;
 }
 
@@ -36,7 +32,7 @@ function pickReward() {
     }
   }
 
-  return REWARD_TABLE[REWARD_TABLE.length - 1].type;
+  return 'double';
 }
 
 function summarizeRewards(rewardTotals) {
@@ -62,68 +58,49 @@ module.exports = {
   async execute(message, args) {
     try {
       await ensureUser(message.author.id);
-      await ensureBaits(message.author.id);
       const user = await getUser(message.author.id);
       const currentCoins = user?.coins || 0;
-      const requestedAmount = parseSpendAmount(args[0]);
+      const totalCost = parseSpendAmount(args[0], currentCoins);
 
-      if (requestedAmount === null) {
-        return message.reply('❌ Please provide a valid amount of coins to spend, or use `all`.\nEach roll costs ' + COST_PER_ROLL + ' coins.');
+      if (totalCost === null) {
+        return message.reply('❌ Please provide a valid amount of coins to gamble, or use `all`.');
       }
-
-      const rollCount = requestedAmount === 'all'
-        ? Math.floor(currentCoins / COST_PER_ROLL)
-        : Math.floor(requestedAmount / COST_PER_ROLL);
-
-      if (rollCount < 1) {
-        return message.reply(`❌ You need at least ${COST_PER_ROLL} coins to gamble for one roll.`);
-      }
-
-      if (requestedAmount !== 'all' && requestedAmount % COST_PER_ROLL !== 0) {
-        return message.reply(`❌ Amount must be a multiple of ${COST_PER_ROLL} coins. Each roll costs ${COST_PER_ROLL} coins.`);
-      }
-
-      const totalCost = requestedAmount === 'all'
-        ? rollCount * COST_PER_ROLL
-        : requestedAmount;
 
       if (currentCoins < totalCost) {
         return message.reply(`❌ You only have ${currentCoins.toLocaleString()} coins, but this would cost ${totalCost.toLocaleString()} coins.`);
       }
 
-      const rewardTotals = {
-        owner_bait: 0,
-        bait_containers: 0,
-        common_bait: 0,
-        uncommon_bait: 0,
-        rare_bait: 0,
-        epic_bait: 0,
-        legendary_bait: 0,
-        mythical_bait: 0
-      };
-
       await deductCoins(message.author.id, totalCost, 'usecoin_gamble');
 
-      for (let index = 0; index < rollCount; index += 1) {
-        const rewardType = pickReward();
-        rewardTotals[rewardType] = (rewardTotals[rewardType] || 0) + 1;
-      }
+      const outcome = pickReward();
+      let rewardText = 'No reward';
+      let rewardCoins = 0;
+      let containerReward = 0;
 
-      for (const [rewardType, amount] of Object.entries(rewardTotals)) {
-        if (amount > 0) {
-          await addBait(message.author.id, rewardType, amount);
-        }
+      if (outcome === 'double') {
+        rewardCoins = totalCost * 2;
+        await addCoins(message.author.id, rewardCoins, 'usecoin_double');
+        rewardText = `💰 Double! You won ${rewardCoins.toLocaleString()} coins.`;
+      } else if (outcome === 'triple') {
+        rewardCoins = totalCost * 3;
+        await addCoins(message.author.id, rewardCoins, 'usecoin_triple');
+        rewardText = `💰 Triple! You won ${rewardCoins.toLocaleString()} coins.`;
+      } else if (outcome === 'container') {
+        await ensureBaits(message.author.id);
+        await addBait(message.author.id, 'bait_containers', 1);
+        containerReward = 1;
+        rewardText = '🎣 Container! You won 1 bait container.';
       }
 
       const updatedUser = await getUser(message.author.id);
       const embed = new EmbedBuilder()
         .setColor('#FFD700')
         .setTitle('🎲 Coin Gamble Result')
-        .setDescription(`You spent ${totalCost.toLocaleString()} coins for ${rollCount} roll${rollCount === 1 ? '' : 's'} and received:`)
+        .setDescription(`You spent ${totalCost.toLocaleString()} coins and got: ${rewardText}`)
         .addFields(
-          { name: 'Rewards', value: summarizeRewards(rewardTotals), inline: false },
           { name: 'Coins Left', value: `${(updatedUser?.coins || 0).toLocaleString()}`, inline: true },
-          { name: 'Odds', value: 'Owner bait: 1% • Mythical: 2% • Legendary: 3% • Containers: 30%', inline: true }
+          { name: 'Stake', value: `${totalCost.toLocaleString()} coins`, inline: true },
+          { name: 'Odds', value: 'Double 45% • Container 30% • Triple 20% • Nothing 5%', inline: false }
         )
         .setFooter({ text: 'Use ~usecoin [amount|all] to gamble more coins.' })
         .setTimestamp();
@@ -140,4 +117,4 @@ module.exports.REWARD_TABLE = REWARD_TABLE;
 module.exports.parseRollCount = parseSpendAmount;
 module.exports.parseSpendAmount = parseSpendAmount;
 module.exports.pickReward = pickReward;
-module.exports.COST_PER_ROLL = COST_PER_ROLL;
+module.exports.DEFAULT_STAKE = DEFAULT_STAKE;

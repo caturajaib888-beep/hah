@@ -10,7 +10,7 @@ function resolveRole(guild, value) {
 module.exports = {
   resolveRole,
   name: 'role',
-  aliases: ['giverole', 'takerole', 'rolemanage'],
+  aliases: ['r'],
   description: 'Add, remove, or inspect a member role',
   usage: '~role <add|remove|list> @user @role',
   requiredPermissions: [PermissionFlagsBits.ManageRoles],

@@ -115,6 +115,7 @@ function getPendingPurge(guildId, channelId, userId) {
 
 module.exports = {
   name: 'purge',
+  aliases: ['p'],
   description: 'Bulk delete recent messages from a channel',
   usage: `~purge <1-${MAX_PURGE_COUNT}>`,
   deleteMessagesInBatches,

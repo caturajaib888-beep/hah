@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { ensureUser, ensureBaits, addBait, addBounty, getDailyClaimRow, upsertDailyClaim, applyBountyPassiveBonus, addCoins } = require('../../database');
+const { ensureUser, ensureBaits, addBait, addBounty, getDailyClaimRow, upsertDailyClaim, applyBountyPassiveBonus } = require('../../database');
 
 function getDailyRewardProfile(streak) {
   const streakBonus = Math.max(0, streak - 1);
@@ -44,6 +44,7 @@ function toUtcDateKey(value) {
 
 module.exports = {
   name: 'daily',
+  aliases: ['d'],
   description: 'Claim your daily bait reward',
   usage: '~daily',
 
@@ -75,8 +76,6 @@ module.exports = {
         await addBait(message.author.id, 'bait_containers', profile.milestoneContainer);
       }
 
-      await addCoins(message.author.id, 1, 'daily_claim');
-
       await upsertDailyClaim(message.author.id, streak);
 
       const baitName = baitType.replace('_', ' ').toUpperCase();
@@ -86,7 +85,6 @@ module.exports = {
         .addFields(
           { name: 'Daily Streak', value: `${streak}`, inline: true },
           { name: 'Bait', value: `${baitName} x1`, inline: true },
-          { name: 'Coins', value: '💰 +1', inline: true },
           { name: 'Bounty', value: `+${passiveResult.amount.toLocaleString()} 🏴‍☠️`, inline: true },
           { name: 'Passive Bonus', value: passiveResult.multiplier > 1 ? `${Math.round((passiveResult.multiplier - 1) * 100)}% bonus` : 'None', inline: true },
           { name: 'Milestone Bonus', value: profile.milestoneContainer ? '+1 bait container' : 'None', inline: true }

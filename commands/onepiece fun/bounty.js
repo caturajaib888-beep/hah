@@ -7,6 +7,7 @@ function getAvatarUrl(user) {
 
 module.exports = {
   name: 'bounty',
+  aliases: ['value'],
   description: 'Check your bounty balance',
   usage: '~bounty [@user]',
 

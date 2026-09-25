@@ -4,7 +4,6 @@ const { authorizeOwnerCommand } = require('../../utils/owner');
 
 module.exports = {
   name: 'bot',
-  aliases: ['botcontrol', 'botstatus', 'botstop'],
   description: 'Enable, disable, shut down, or check bot status',
   ownerOnly: true,
   usage: '~bot <enable|disable|status|shutdown>',

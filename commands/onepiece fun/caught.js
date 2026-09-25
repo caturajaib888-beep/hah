@@ -3,7 +3,7 @@ const { getCaughtTargets } = require('../../database');
 
 module.exports = {
   name: 'caught',
-  aliases: ['catchhistory', 'caughtlist'],
+  aliases: ['mine'],
   description: 'View all people you have successfully caught',
   usage: '~caught',
 

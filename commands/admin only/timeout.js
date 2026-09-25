@@ -19,6 +19,7 @@ function parseDuration(duration) {
 
 module.exports = {
   name: 'timeout',
+  aliases: ['tm'],
   description: 'Temporarily timeout a member',
   usage: '~timeout @user <duration> [reason]',
   requiredPermissions: [PermissionFlagsBits.ModerateMembers],

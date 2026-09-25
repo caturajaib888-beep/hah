@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { ensureUser, ensureBaits, getBaits, addBait, getBounty, addBounty, applyBountyPassiveBonus, incrementQuestProgress, addCoins } = require('../../database');
+const { ensureUser, ensureBaits, getBaits, addBait, getBounty, addBounty, applyBountyPassiveBonus, incrementQuestProgress } = require('../../database');
 
 const SESSION_TIME_MS = 10 * 60 * 1000;
 const BANDIT_BATTLE_MAX_TURNS = 6;
@@ -254,7 +254,6 @@ module.exports = {
           if (roundResult.result === 'win') {
             const baseReward = getRandomGain(BANDIT_STEAL_MIN, BANDIT_STEAL_MAX);
             const gained = await awardBanditBounty(message.author.id, baseReward, state.battle?.source || 'sail_bandit');
-            await addCoins(message.author.id, 3, 'sail_bandit_victory');
             await trackQuestProgress(message.author.id, 'bandit', true);
             state.bounty = await getBounty(message.author.id);
             state.lastEvent = `Bandit battle round ${state.battle.turns}/${BANDIT_BATTLE_MAX_TURNS}: ${roundResult.text} You stole ${formatBounty(gained)}.`;
@@ -291,18 +290,6 @@ module.exports = {
         moveShip(state, direction);
         const encounter = resolveEncounter();
         const appliedChange = await applyBountyChange(message.author.id, encounter.bountyChange, encounter.passiveSource || 'sail');
-
-        // Add coin rewards based on encounter type
-        if (encounter.type === 'one_piece') {
-          await addCoins(message.author.id, 10, 'sail_one_piece');
-        } else if (encounter.type === 'wealthy_ship') {
-          const coinReward = getRandomGain(2, 5);
-          await addCoins(message.author.id, coinReward, 'sail_wealthy_ship');
-        } else if (encounter.type === 'merchant') {
-          if (Math.random() < 0.5) {
-            await addCoins(message.author.id, 1, 'sail_merchant');
-          }
-        }
 
         if (encounter.rewardBait) {
           await addBait(message.author.id, encounter.rewardBait, 1);

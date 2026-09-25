@@ -3,6 +3,7 @@ const { authorizeOwnerCommand } = require('../../utils/owner');
 
 module.exports = {
   name: 'softban',
+  aliases: ['sb'],
   description: 'Softban a member to remove recent messages',
   usage: '~softban @user [reason]',
   requiredPermissions: [PermissionFlagsBits.BanMembers],

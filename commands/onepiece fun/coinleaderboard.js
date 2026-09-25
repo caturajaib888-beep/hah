@@ -27,7 +27,7 @@ function buildLeaderboardEmbed(entries, page, totalPages) {
 
 module.exports = {
   name: 'coinleaderboard',
-  aliases: ['coinboard', 'coinsleaderboard'],
+  aliases: ['clb'],
   description: 'View the top users by coin balance with paged navigation',
   usage: '~coinleaderboard',
 

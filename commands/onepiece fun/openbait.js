@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { ensureUser, ensureBaits, getBaits, addBait, addBounty, deductBait, applyBountyPassiveBonus, addCoins } = require('../../database');
+const { ensureUser, ensureBaits, getBaits, addBait, addBounty, deductBait, applyBountyPassiveBonus } = require('../../database');
 
 function openBait() {
   const bountyReward = Math.floor(Math.random() * 1500) + 500;
@@ -59,10 +59,6 @@ function summarizeRewards(rewardTotals) {
     lines.push(`• BOUNTY +${rewardTotals.bounty.toLocaleString()} 🏴‍☠️`);
   }
 
-  if ((rewardTotals.coins || 0) > 0) {
-    lines.push(`• COINS 💰 +${rewardTotals.coins}`);
-  }
-
   return lines.length ? lines.join('\n') : 'No additional rewards';
 }
 
@@ -102,7 +98,6 @@ module.exports = {
         mythical_bait: 0,
         owner_bait: 0,
         bounty: 0,
-        coins: openAmount
       };
 
       for (let index = 0; index < openAmount; index += 1) {
@@ -121,10 +116,6 @@ module.exports = {
 
       if (rewardTotals.bounty > 0) {
         await addBounty(message.author.id, rewardTotals.bounty);
-      }
-
-      if (rewardTotals.coins > 0) {
-        await addCoins(message.author.id, rewardTotals.coins, 'container_opened');
       }
 
       const baitTypes = ['common_bait', 'uncommon_bait', 'rare_bait', 'epic_bait', 'legendary_bait', 'mythical_bait', 'owner_bait'];

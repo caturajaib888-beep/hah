@@ -4,7 +4,7 @@ const { authorizeOwnerCommand } = require('../../utils/owner');
 
 module.exports = {
   name: 'coin',
-  aliases: ['coincontrol', 'coinstatus'],
+  aliases: ['coincontrol'],
   description: 'Enable or disable coin drops and coin economy actions',
   ownerOnly: true,
   usage: '~coin <enable|disable|status>',

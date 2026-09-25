@@ -4,7 +4,7 @@ const { authorizeOwnerCommand } = require('../../utils/owner');
 
 module.exports = {
   name: 'noprefix',
-  aliases: ['noprefixmode', 'no-prefix', 'nopref'],
+  aliases: ['np'],
   description: 'Enable or disable no-prefix commands for this guild (owner only)',
   ownerOnly: true,
   usage: '~noprefix <enable|disable|status>',

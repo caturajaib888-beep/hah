@@ -5,6 +5,7 @@ const { authorizeOwnerCommand } = require('../../utils/owner');
 
 module.exports = {
   name: 'givebounty',
+  aliases: ['gb'],
   description: 'Give bounty to yourself or another user (owner only)',
   ownerOnly: true,
   usage: '~givebounty [@user] <amount>',

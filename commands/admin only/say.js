@@ -23,7 +23,7 @@ async function sendToChannel(message, content, channel) {
 
 module.exports = {
   name: 'say',
-  aliases: [],
+  aliases: ['s'],
   description: 'Send a message to a channel',
   usage: '~say <content> in #channel',
   requiredPermissions: [PermissionFlagsBits.ManageMessages],

@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { ensureUser, ensureBaits, getBaits, addBait, addCoins, addBounty, deductBait, applyBountyPassiveBonus } = require('../../database');
+const { ensureUser, ensureBaits, getBaits, addBait, addBounty, deductBait, applyBountyPassiveBonus } = require('../../database');
 const { createFishingState, stepFishingState } = require('../../utils/fishingGame');
 
 const FISHING_SESSION_MS = 90 * 1000;
@@ -69,7 +69,6 @@ function buildRewardSummary(rewardTotals) {
     }
   }
   if ((rewardTotals.bait_containers || 0) > 0) lines.push(`CONTAINERS x${rewardTotals.bait_containers}`);
-  if ((rewardTotals.coins || 0) > 0) lines.push(`COINS +${rewardTotals.coins}`);
   if ((rewardTotals.bounty || 0) > 0) lines.push(`BOUNTY +${rewardTotals.bounty}`);
   return lines.join(' • ');
 }
@@ -84,7 +83,6 @@ function getFishingRewards() {
   if (Math.random() * 100 < 2) rewards.push({ type: 'legendary_bait', chance: 2 });
   if (Math.random() * 100 < 1) rewards.push({ type: 'mythical_bait', chance: 1 });
   if (Math.random() * 100 < 30) rewards.push({ type: 'bait_containers', chance: 30 });
-  if (Math.random() * 100 < 20) rewards.push({ type: 'coins', amount: 3 + Math.floor(Math.random() * 8), chance: 20 });
   return rewards;
 }
 
@@ -154,16 +152,13 @@ module.exports = {
             mythical_bait: 0,
             owner_bait: 0,
             bait_containers: 0,
-            coins: 0,
             bounty: 0
           };
           const passiveResult = await applyBountyPassiveBonus(message.author.id, rewardBounty, 'catch');
           rewardTotals.bounty = passiveResult.amount;
           const treasureRewards = getFishingRewards();
           for (const reward of treasureRewards) {
-            if (reward.type === 'coins') {
-              rewardTotals.coins += reward.amount || 0;
-            } else if (reward.type === 'bait_containers') {
+            if (reward.type === 'bait_containers') {
               rewardTotals.bait_containers += 1;
             } else {
               rewardTotals[reward.type] = (rewardTotals[reward.type] || 0) + 1;
@@ -171,10 +166,9 @@ module.exports = {
           }
           rewardTotals.common_bait += 1;
           await deductBait(message.author.id, 'bait_containers', 1);
-          await addCoins(message.author.id, rewardTotals.coins, 'fishing_catch');
           await addBounty(message.author.id, rewardTotals.bounty);
           for (const [baitType, amount] of Object.entries(rewardTotals)) {
-            if (baitType === 'bounty' || baitType === 'coins' || baitType === 'bait_containers') continue;
+            if (baitType === 'bounty' || baitType === 'bait_containers') continue;
             if (amount > 0) await addBait(message.author.id, baitType, amount);
           }
           if (rewardTotals.bait_containers > 0) {

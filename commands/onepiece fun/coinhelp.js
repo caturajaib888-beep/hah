@@ -2,6 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
   name: 'coinhelp',
+  aliases: ['ch'],
   description: 'Show the coin economy commands',
   usage: '~coinhelp',
   async execute(message) {

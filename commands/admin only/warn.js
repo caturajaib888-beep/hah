@@ -4,6 +4,7 @@ const { authorizeOwnerCommand } = require('../../utils/owner');
 
 module.exports = {
   name: 'warn',
+  aliases: ['w'],
   description: 'Warn a member and send them a private warning message',
   usage: '~warn @user [reason]',
   requiredPermissions: [PermissionFlagsBits.ManageMessages],

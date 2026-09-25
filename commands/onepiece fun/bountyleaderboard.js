@@ -3,7 +3,7 @@ const { getBountyLeaderboard } = require('../../database');
 
 module.exports = {
   name: 'bountyleaderboard',
-  aliases: ['bbl', 'bountyboard'],
+  aliases: ['blb'],
   description: 'View the top users by bounty',
   usage: '~bountyleaderboard [limit]',
 

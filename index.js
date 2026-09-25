@@ -1169,29 +1169,19 @@ client.on('messageCreate', async (message) => {
       await ensureUser(message.author.id);
       await addCredits(message.author.id, 1, 'message');
       await incrementMessageCount(message.author.id);
+      const updatedMessageUser = await getUser(message.author.id);
+
+      if (coinEconomyEnabled && Number(updatedMessageUser?.messageCount || 0) % 350 === 0) {
+        await addCoins(message.author.id, 1, 'message_milestone');
+        await sendMessageReply(message, `💰 ${message.author} reached a 350-message milestone and earned 1 coin!`);
+      }
 
       if (coinEconomyEnabled) {
-        const userData = await getUser(message.author.id);
-
-        // 1% chance to drop a coin on every message
         try {
-          let dropped = false;
           if (Math.random() < 0.01) {
-            dropped = true;
             await addCoins(message.author.id, 1, 'coin_drop');
             const updated = await getUser(message.author.id);
             await sendMessageReply(message, `💰 Coin Drop! ${message.author} found 1 coin! You now have **${updated.coins || 0}** coin(s).`);
-          }
-
-          // Guaranteed coin every 100 messages
-          if (userData?.messageCount && userData.messageCount % 100 === 0) {
-            if (!dropped) {
-              await addCoins(message.author.id, 1, 'coin_drop');
-              const updated = await getUser(message.author.id);
-              await sendMessageReply(message, `💰 Milestone Coin! ${message.author} earned 1 coin for reaching ${userData.messageCount} messages. You now have **${updated.coins || 0}** coin(s).`);
-            } else {
-              await sendMessageReply(message, `💰 Milestone Bonus! You already got a random coin drop, and you also hit ${userData.messageCount} messages. Nice!`);
-            }
           }
         } catch (err) {
           console.error('Error with coin drop:', err);
@@ -1204,17 +1194,15 @@ client.on('messageCreate', async (message) => {
   }
   }
 
-  // 1% chance to drop a bait container and coin on every message
+  // 1% chance to drop a bait container on every message
   try {
     if (coinEconomyEnabled && Math.random() < 0.01) {
       await ensureBaits(message.author.id);
       await addBait(message.author.id, 'bait_containers', 1);
-      await addCoins(message.author.id, 1, 'container_drop');
       const baits = await getBaits(message.author.id);
-      const user = await getUser(message.author.id);
       const prefix = client.prefix || process.env.PREFIX || '!';
-      await sendMessageReply(message, `🎣 **Container Drop!** You found a bait container and 1 coin!
-Containers: **${baits.bait_containers || 0}** | Coins: **${user.coins || 0}**
+      await sendMessageReply(message, `🎣 **Container Drop!** You found a bait container!
+Containers: **${baits.bait_containers || 0}**
 Use \`${prefix}baits\` to check your bait inventory.
 Use \`${prefix}catch @user\` to catch members with bait.
 Use \`${prefix}openbait\` to open bait containers.`);
@@ -1241,6 +1229,13 @@ Use \`${prefix}openbait\` to open bait containers.`);
   }
 
   try {
+    const disabledCommand = (await getConfig(`command_disabled:${command.name}`)) === 'true';
+    if (disabledCommand && !['disable', 'enable'].includes(String(command.name).toLowerCase())) {
+      await sendMessageReply(message, `⛔ The \`${command.name}\` command is currently disabled.`);
+      return;
+    }
+
+    message.commandName = commandName;
     await command.execute(message, args, client);
     await sendAuditLog(message.guild, 'Command used', `User: ${message.author}\nCommand: ${commandName}\nArguments: ${args.join(' ') || '*none*'}`, '#5865F2');
   } catch (error) {
@@ -1269,6 +1264,11 @@ client.on('interactionCreate', async (interaction) => {
   if (!command || typeof command.execute !== 'function' || !command.data) {
     await interaction.reply({ content: 'This command is no longer available. Please run the slash-command deployment again.' }).catch(() => {});
     return;
+  }
+
+  const disabledCommand = (await getConfig(`command_disabled:${command.name}`)) === 'true';
+  if (disabledCommand && !['disable', 'enable'].includes(String(command.name).toLowerCase())) {
+    return interaction.reply({ content: `⛔ The \`${command.name}\` command is currently disabled.`, ephemeral: true }).catch(() => {});
   }
 
   if (!client.enabled && !isBotCommandAllowedWhileDisabled(command)) {

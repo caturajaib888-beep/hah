@@ -211,6 +211,7 @@ module.exports = {
   getRequiredRoleDisplay,
   formatBaitLabel,
   name: 'catch',
+  aliases: ['c'],
   description: 'Catch another Discord member using baits',
   usage: '~catch @user',
 

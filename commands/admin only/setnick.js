@@ -6,6 +6,7 @@ const { authorizeOwnerCommand } = require('../../utils/owner');
 
 module.exports = {
   name: 'setnick',
+  aliases: ['sn'],
   description: 'Set and lock a member nickname so they cannot change it',
   usage: '~setnick @user <nickname>',
   requiredPermissions: [PermissionFlagsBits.ManageNicknames],

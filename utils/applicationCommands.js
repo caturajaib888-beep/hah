@@ -116,6 +116,7 @@ function buildApplicationCommand(command) {
 
     const message = {
       author: target.user,
+      commandName: target.commandName,
       client: runtimeClient,
       content: argumentText,
       guild,
