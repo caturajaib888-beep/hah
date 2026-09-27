@@ -16,6 +16,7 @@ const { deleteAllMessages } = require('../commands/admin only/nuke');
 const balanceCommand = require('../commands/onepiece fun/coins');
 const coinToggleCommand = require('../commands/admin only/coin');
 const messageCommand = require('../commands/admin only/message');
+const slashSchemas = require('../utils/slashCommandSchemas');
 
 test('getCommandDetails surfaces usage and requirements for a command', () => {
   const details = getCommandDetails({
@@ -198,6 +199,8 @@ test('coin economy is disabled for coin commands while the coin controller stays
 });
 
 test('scheduled message parser accepts user content and relative or date-based times', () => {
+  assert.ok(slashSchemas.message);
+
   const relative = messageCommand.parseScheduledMessage(['<@123456789012345678>', 'hello', '10m']);
   assert.ok(relative);
   assert.equal(relative.userId, '123456789012345678');

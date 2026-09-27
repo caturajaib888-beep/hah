@@ -32,6 +32,7 @@ const schemas = {
   lockchannel: [choice('action', 'Channel action', ['lock', 'unlock', 'status']), channel('channel', 'Channel to manage')],
   lockdown: [choice('action', 'Lockdown action', ['on', 'off', 'status']), integer('seconds', 'Lockdown duration in seconds', false, 1, 86400)],
   massban: [text('users', 'User IDs or mentions separated by spaces'), text('reason', 'Reason for the mass ban'), confirm()],
+  message: [user('user', 'User to receive the scheduled message'), text('content', 'Message to send privately'), text('time', 'When to send it, such as 10m or 2026-09-27 18:00')],
   mikuset: [choice('action', 'Image protection action', ['setup', 'autorole', 'add', 'list', 'remove', 'logs']), role('role', 'Role to use for autorole', false), integer('id', 'Banned image ID to remove', false, 1), attachment()],
   mute: [user('user', 'Member to mute'), choice('duration', 'Duration or permanent mute', ['1m', '5m', '10m', '1h', '1d', 'permanent']), text('reason', 'Reason for the mute', false)],
   noprefix: [choice('action', 'No-prefix mode action', ['enable', 'disable', 'status'])],
