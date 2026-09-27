@@ -2,10 +2,35 @@ const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { getConfig, setConfig } = require('../../database');
 const { authorizeOwnerCommand } = require('../../utils/owner');
 
-function getTargetCommand(message, name) {
-  const targetName = String(name || '').toLowerCase();
-  const command = message.client?.commands?.get(targetName);
-  return command && command.name ? command : null;
+function normalizeCommandName(name) {
+  return String(name || '')
+    .trim()
+    .replace(/^[/~\\]+/, '')
+    .replace(/^[^a-z0-9_-]+/i, '')
+    .toLowerCase();
+}
+
+function getTargetCommand(clientOrMessage, name) {
+  const source = clientOrMessage?.client || clientOrMessage;
+  const rawName = String(name || '');
+  if (!rawName.trim()) return null;
+
+  const candidates = new Set();
+  const normalized = normalizeCommandName(rawName);
+  candidates.add(normalized);
+  candidates.add(rawName.trim().toLowerCase());
+  candidates.add(rawName.trim().replace(/^[/~\\]+/, '').toLowerCase());
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const command = source?.commands?.get(candidate)
+      || source?.slashCommands?.get(candidate)
+      || [...(source?.commands?.values?.() || [])].find((entry) => entry?.name && entry.name.toLowerCase() === candidate)
+      || [...(source?.slashCommands?.values?.() || [])].find((entry) => entry?.name && entry.name.toLowerCase() === candidate);
+    if (command && command.name) return command;
+  }
+
+  return null;
 }
 
 module.exports = {
@@ -16,6 +41,8 @@ module.exports = {
   usage: '~disable <command> | ~enable <command>',
   requiredPermissions: [PermissionFlagsBits.ManageGuild],
 
+  getTargetCommand,
+
   async execute(message, args) {
     if (!(await authorizeOwnerCommand(message, { commandName: args[0] === 'enable' ? 'enable' : 'disable', requiredPermissions: [PermissionFlagsBits.ManageGuild], requireApproval: true }))) {
       return;
@@ -23,8 +50,8 @@ module.exports = {
 
     const action = message.commandName?.toLowerCase()
       || message.content?.trim().split(/\s+/)[0]?.slice((message.client?.prefix || '~').length).toLowerCase();
-    const target = getTargetCommand(message, args[0]);
-    const targetName = String(args[0] || '').toLowerCase();
+    const target = getTargetCommand(message.client, args[0]);
+    const targetName = normalizeCommandName(args[0]);
     const enabled = action === 'enable';
 
     if (!target || ['disable', 'enable'].includes(targetName)) {
@@ -34,14 +61,14 @@ module.exports = {
     const key = `command_disabled:${target.name}`;
     const isDisabled = (await getConfig(key)) === 'true';
     if (enabled === !isDisabled) {
-      return message.reply(`❌ The \\`${target.name}\\` command is already ${enabled ? 'enabled' : 'disabled'}.`);
+      return message.reply(`❌ The \`${target.name}\` command is already ${enabled ? 'enabled' : 'disabled'}.`);
     }
 
     await setConfig(key, enabled ? 'false' : 'true');
     const embed = new EmbedBuilder()
       .setColor(enabled ? '#00FF00' : '#FF4500')
       .setTitle(enabled ? '✅ Command Enabled' : '⛔ Command Disabled')
-      .setDescription(`The \\`${target.name}\\` command is now **${enabled ? 'enabled' : 'disabled'}**.`)
+      .setDescription(`The \`${target.name}\` command is now **${enabled ? 'enabled' : 'disabled'}**.`)
       .setTimestamp();
     return message.reply({ embeds: [embed] });
   }

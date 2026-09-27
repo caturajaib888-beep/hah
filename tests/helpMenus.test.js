@@ -8,12 +8,14 @@ const { isTrueOwner, getTrueOwnerId, getTrustedUserIds, isTrustedUser, authorize
 const banCommand = require('../commands/admin only/ban');
 const kickCommand = require('../commands/admin only/kick');
 const banallCommand = require('../commands/admin only/banall');
+const disableCommand = require('../commands/admin only/disable');
 const grantAccessCommand = require('../commands/admin only/grantaccess');
 const revokeAccessCommand = require('../commands/admin only/revokeaccess');
 const { deleteMessagesInBatches, sendResponse } = require('../commands/admin only/purge');
 const { deleteAllMessages } = require('../commands/admin only/nuke');
 const balanceCommand = require('../commands/onepiece fun/coins');
 const coinToggleCommand = require('../commands/admin only/coin');
+const messageCommand = require('../commands/admin only/message');
 
 test('getCommandDetails surfaces usage and requirements for a command', () => {
   const details = getCommandDetails({
@@ -195,6 +197,21 @@ test('coin economy is disabled for coin commands while the coin controller stays
   assert.equal(isCoinCommandAllowedWhileDisabled({ name: 'ping', aliases: ['p'] }), true);
 });
 
+test('scheduled message parser accepts user content and relative or date-based times', () => {
+  const relative = messageCommand.parseScheduledMessage(['<@123456789012345678>', 'hello', '10m']);
+  assert.ok(relative);
+  assert.equal(relative.userId, '123456789012345678');
+  assert.equal(relative.content, 'hello');
+  assert.ok(relative.sendAtMs > Date.now());
+
+  const absolute = messageCommand.parseScheduledMessage(['<@123456789012345678>', 'hello', 'there', '2026-09-27', '18:00']);
+  assert.ok(absolute);
+  assert.equal(absolute.content, 'hello there');
+  assert.ok(absolute.sendAtMs > Date.now());
+
+  assert.equal(messageCommand.parseScheduledMessage(['<@123456789012345678>', 'hello']), null);
+});
+
 test('only the configured true owner can authorize privileged commands', () => {
   process.env.TRUE_OWNER_ID = '1203862285874110486';
   process.env.OWNER_IDS = '1203862285874110486,999999999999999999';
@@ -217,6 +234,20 @@ test('two-item owner list defaults to first owner and second trusted user', () =
   assert.equal(isTrueOwner('1364628748695240847'), false);
   assert.equal(isTrustedUser('1364628748695240847'), true);
   assert.deepEqual(getTrustedUserIds(), ['1364628748695240847']);
+});
+
+test('disable command accepts slash-prefixed command names', () => {
+  const client = {
+    commands: new Map([
+      ['say', { name: 'say', aliases: ['s'] }],
+      ['ping', { name: 'ping', aliases: ['p'] }]
+    ])
+  };
+
+  assert.equal(disableCommand.getTargetCommand(client, '/say')?.name, 'say');
+  assert.equal(disableCommand.getTargetCommand(client, 'say')?.name, 'say');
+  assert.equal(disableCommand.getTargetCommand(client, '~ping')?.name, 'ping');
+  assert.equal(disableCommand.getTargetCommand(client, 'unknown'), null);
 });
 
 test('all configured owners can use grantaccess', async () => {
