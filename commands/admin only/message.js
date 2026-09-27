@@ -1,4 +1,4 @@
-const { PermissionFlagsBits } = require('discord.js');
+const { PermissionFlagsBits, SlashCommandBuilder } = require('discord.js');
 const { authorizeOwnerCommand } = require('../../utils/owner');
 
 function parseRelativeDurationToMs(value) {
@@ -110,10 +110,53 @@ module.exports = {
   description: 'Schedule a direct message to a user at a later time',
   usage: '~message <@user> <content> <time>',
   requiredPermissions: [PermissionFlagsBits.ManageGuild],
+  data: new SlashCommandBuilder()
+    .setName('message')
+    .setDescription('Schedule a direct message to a user at a later time')
+    .addUserOption((option) => option
+      .setName('user')
+      .setDescription('User to receive the message')
+      .setRequired(true))
+    .addStringOption((option) => option
+      .setName('content')
+      .setDescription('Message to send privately')
+      .setRequired(true))
+    .addStringOption((option) => option
+      .setName('time')
+      .setDescription('When to send it, such as 10m or 2026-09-27 18:00')
+      .setRequired(true)),
 
   parseScheduledMessage,
 
   async execute(message, args = []) {
+    if (message?.isChatInputCommand?.()) {
+      const user = message.options.getUser('user');
+      const content = message.options.getString('content');
+      const time = message.options.getString('time');
+      if (!message.deferred && !message.replied) await message.deferReply({ ephemeral: true });
+
+      if (!(await authorizeOwnerCommand(message, { commandName: 'message', requiredPermissions: [PermissionFlagsBits.ManageGuild], requireApproval: true }))) {
+        return;
+      }
+
+      const parsed = parseScheduledMessage([`<@${user.id}>`, ...String(content).trim().split(/\s+/), String(time).trim()]);
+      if (!parsed) {
+        return message.editReply('❌ Usage: `/message user:@user content:"message" time:"10m"`\nExamples: `/message user:@User content:"hello" time:"10m"` or `/message user:@User content:"hello" time:"2026-09-27 18:00"`');
+      }
+
+      const target = user;
+      const delayMs = Math.max(0, parsed.sendAtMs - Date.now());
+      setTimeout(async () => {
+        try {
+          await target.send({ content: parsed.content });
+        } catch (error) {
+          console.error(`Failed to send scheduled DM to ${target.id}:`, error);
+        }
+      }, delayMs);
+
+      return message.editReply(`✅ Scheduled a message to ${target} for ${new Date(parsed.sendAtMs).toLocaleString()}.`);
+    }
+
     if (!message.guild) {
       return message.reply('❌ This command can only be used in a server.');
     }
@@ -144,6 +187,6 @@ module.exports = {
       }
     }, delayMs);
 
-    return message.reply(`✅ Scheduled a message to ${target} for ${new Date(parsed.sendAtMs).toLocaleString()} .`);
+    return message.reply(`✅ Scheduled a message to ${target} for ${new Date(parsed.sendAtMs).toLocaleString()}.`);
   }
 };
