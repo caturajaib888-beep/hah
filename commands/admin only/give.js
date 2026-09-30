@@ -83,7 +83,8 @@ module.exports = {
           epic: 'epic_bait',
           legendary: 'legendary_bait',
           mythical: 'mythical_bait',
-          owner: 'owner_bait'
+          owner: 'owner_bait',
+          love: 'love_bait'
         };
 
         const normalizedBaitType = baitMap[baitType];

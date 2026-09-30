@@ -101,6 +101,7 @@ function initializeDatabase() {
         legendary_bait INTEGER DEFAULT 0,
         mythical_bait INTEGER DEFAULT 0,
         owner_bait INTEGER DEFAULT 0,
+        love_bait INTEGER DEFAULT 0,
         lastUpdated DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -116,6 +117,14 @@ function initializeDatabase() {
         db.run('ALTER TABLE baits ADD COLUMN bait_containers INTEGER DEFAULT 0', (alterErr) => {
           if (alterErr) {
             console.error('Failed to add bait_containers column:', alterErr);
+          }
+        });
+      }
+      const hasLoveBait = columns.some((col) => col.name === 'love_bait');
+      if (!hasLoveBait) {
+        db.run('ALTER TABLE baits ADD COLUMN love_bait INTEGER DEFAULT 0', (alterErr) => {
+          if (alterErr) {
+            console.error('Failed to add love_bait column:', alterErr);
           }
         });
       }
@@ -1006,7 +1015,7 @@ function getBaits(userId) {
   return new Promise((resolve, reject) => {
     db.get('SELECT * FROM baits WHERE userId = ?', [userId], (err, row) => {
       if (err) reject(err);
-      resolve(row || { userId, bait_containers: 0, common_bait: 0, uncommon_bait: 0, rare_bait: 0, epic_bait: 0, legendary_bait: 0, mythical_bait: 0, owner_bait: 0 });
+      resolve(row || { userId, bait_containers: 0, common_bait: 0, uncommon_bait: 0, rare_bait: 0, epic_bait: 0, legendary_bait: 0, mythical_bait: 0, owner_bait: 0, love_bait: 0 });
     });
   });
 }
@@ -1023,7 +1032,7 @@ async function ensureBaits(userId) {
         [userId, 0, 0, 0, 0, 0, 0, 0, 0],
         function(insertErr) {
           if (insertErr) return reject(insertErr);
-          resolve({ userId, bait_containers: 0, common_bait: 0, uncommon_bait: 0, rare_bait: 0, epic_bait: 0, legendary_bait: 0, mythical_bait: 0, owner_bait: 0 });
+          resolve({ userId, bait_containers: 0, common_bait: 0, uncommon_bait: 0, rare_bait: 0, epic_bait: 0, legendary_bait: 0, mythical_bait: 0, owner_bait: 0, love_bait: 0 });
         }
       );
     });

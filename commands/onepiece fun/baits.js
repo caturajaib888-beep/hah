@@ -33,6 +33,7 @@ module.exports = {
 🟨 **Legendary Bait**: ${baits.legendary_bait || 0}
 ⭐ **Mythical Bait**: ${baits.mythical_bait || 0}
 👑 **Owner Bait**: ${baits.owner_bait || 0}
+💗 **Love Bait**: ${baits.love_bait || 0}
       `;
 
       const embed = new EmbedBuilder()

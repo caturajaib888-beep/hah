@@ -69,6 +69,7 @@ const UNCOMMON_ROLE_IDS = [
 ];
 
 const BAIT_PRIORITY = {
+  love_bait: 7,
   owner_bait: 6,
   mythical_bait: 5,
   legendary_bait: 4,
@@ -135,7 +136,8 @@ function getSuccessRate(baitType) {
     epic_bait: 0.55,
     legendary_bait: 0.50,
     mythical_bait: 0.40,
-    owner_bait: 0.30
+    owner_bait: 0.30,
+    love_bait: 0.25
   };
   return rates[baitType] || 0.70;
 }
@@ -148,7 +150,8 @@ function getRandomBounty(baitType) {
     epic_bait: [3500, 4250, 5000],
     legendary_bait: [5000, 5750, 6500],
     mythical_bait: [6000, 6500, 7000],
-    owner_bait: [7000, 10000, 15000]
+    owner_bait: [7000, 10000, 15000],
+    love_bait: [10000, 15000, 20000]
   };
   const options = bounties[baitType] || bounties.common_bait;
   return options[Math.floor(Math.random() * options.length)];
@@ -161,7 +164,8 @@ const CATCH_PASSIVE_ROLLS = {
   epic_bait: { chance: 0.24, bonusPercent: 12, name: 'Epic Catch Passive' },
   legendary_bait: { chance: 0.28, bonusPercent: 15, name: 'Legendary Catch Passive' },
   mythical_bait: { chance: 0.32, bonusPercent: 20, name: 'Mythical Catch Passive' },
-  owner_bait: { chance: 0.36, bonusPercent: 30, name: 'Owner Catch Passive' }
+  owner_bait: { chance: 0.36, bonusPercent: 30, name: 'Owner Catch Passive' },
+  love_bait: { chance: 0.40, bonusPercent: 35, name: 'Love Catch Passive' }
 };
 
 function rollCatchPassiveBonus(baitType) {
@@ -210,10 +214,11 @@ module.exports = {
   getBaitRequirement,
   getRequiredRoleDisplay,
   formatBaitLabel,
+  getSuccessRate,
   name: 'catch',
   aliases: ['c'],
   description: 'Catch another Discord member using baits',
-  usage: '~catch @user',
+  usage: '~catch @user [love]',
 
   async execute(message, args) {
     if (!message.guild) {
@@ -239,21 +244,23 @@ module.exports = {
 
       const catcherBaits = await getBaits(message.author.id);
       const requiredBait = getBaitRequirement(target);
-      const baitAmount = catcherBaits[requiredBait] || 0;
+      const useLoveBait = String(args[1] || '').toLowerCase() === 'love';
+      const baitUsed = useLoveBait ? 'love_bait' : requiredBait;
+      const baitAmount = catcherBaits[baitUsed] || 0;
 
       if (baitAmount < 1) {
-        const baitName = formatBaitLabel(requiredBait);
+        const baitName = formatBaitLabel(baitUsed);
         return message.reply(`❌ You don't have any ${baitName}! You need ${baitName} to catch ${target}.`);
       }
 
-      const successRate = getSuccessRate(requiredBait);
+      const successRate = getSuccessRate(baitUsed);
       const success = Math.random() < successRate;
 
       if (success) {
-        const bounty = getRandomBounty(requiredBait);
-        await deductBait(message.author.id, requiredBait, 1);
+        const bounty = getRandomBounty(baitUsed);
+        await deductBait(message.author.id, baitUsed, 1);
         const permanentPassive = await applyBountyPassiveBonus(message.author.id, bounty, 'catch');
-        const catchPassive = rollCatchPassiveBonus(requiredBait);
+        const catchPassive = rollCatchPassiveBonus(baitUsed);
         const extraCatchBonus = catchPassive ? Math.floor(permanentPassive.amount * (catchPassive.bonusPercent / 100)) : 0;
         const totalBounty = permanentPassive.amount + extraCatchBonus;
         const passivePieces = [];
@@ -280,16 +287,16 @@ module.exports = {
         const passiveBonus = totalBounty - bounty;
 
         await addBounty(message.author.id, totalBounty);
-        await recordCatch(message.author.id, target.id, requiredBait, true, totalBounty, passiveName, passiveBonus);
+        await recordCatch(message.author.id, target.id, baitUsed, true, totalBounty, passiveName, passiveBonus);
 
-        const requiredBaitLabel = formatBaitLabel(requiredBait);
+        const requiredBaitLabel = formatBaitLabel(baitUsed);
         const embed = new EmbedBuilder()
           .setColor('#00FF00')
           .setTitle('🎣 Catch Successful!')
           .addFields(
             { name: 'Catcher', value: `${message.author}`, inline: true },
             { name: 'Caught Member', value: `${target}`, inline: true },
-            { name: 'Required Bait', value: requiredBaitLabel, inline: false },
+            { name: 'Bait Used', value: requiredBaitLabel, inline: false },
             { name: 'Passive', value: passiveName === 'None' ? 'None' : passiveName, inline: true },
             { name: '💰 Bounty Gained', value: `${totalBounty.toLocaleString()} 🏴‍☠️`, inline: true },
             { name: 'Baits Left', value: `${Math.max(0, baitAmount - 1)}`, inline: true }
@@ -299,17 +306,17 @@ module.exports = {
 
         await message.reply({ embeds: [embed] });
       } else {
-        await deductBait(message.author.id, requiredBait, 1);
-        await recordCatch(message.author.id, target.id, requiredBait, false, 0);
+        await deductBait(message.author.id, baitUsed, 1);
+        await recordCatch(message.author.id, target.id, baitUsed, false, 0);
 
-        const requiredBaitLabel = formatBaitLabel(requiredBait);
+        const requiredBaitLabel = formatBaitLabel(baitUsed);
         const embed = new EmbedBuilder()
           .setColor('#FF0000')
           .setTitle('🎣 Catch Failed!')
           .addFields(
             { name: 'Catcher', value: `${message.author}`, inline: true },
             { name: 'Target', value: `${target}`, inline: true },
-            { name: 'Required Bait', value: requiredBaitLabel, inline: false },
+            { name: 'Bait Used', value: requiredBaitLabel, inline: false },
             { name: 'Baits Left', value: `${Math.max(0, baitAmount - 1)}`, inline: true }
           )
           .setThumbnail(target.user.displayAvatarURL())

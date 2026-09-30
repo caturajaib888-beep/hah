@@ -9,8 +9,6 @@ function normalizeCommandName(value) {
   return normalized || null;
 }
 
-const GRANTABLE_COMMANDS = new Set(['setnick', 'execute', 'say']);
-
 function getAllCommandAccessNames(startDir = path.join(__dirname, '..', '..', 'commands'), names = new Set()) {
   const entries = fs.readdirSync(startDir, { withFileTypes: true });
 
@@ -27,6 +25,9 @@ function getAllCommandAccessNames(startDir = path.join(__dirname, '..', '..', 'c
 
     try {
       const commandModule = require(entryPath);
+      if (commandModule?.ownerOnly) {
+        continue;
+      }
       if (commandModule?.name) {
         names.add(String(commandModule.name).trim().toLowerCase());
       }
@@ -43,6 +44,20 @@ function getAllCommandAccessNames(startDir = path.join(__dirname, '..', '..', 'c
   }
 
   return [...names].filter(Boolean);
+}
+
+function getRequestedGrantCommands(requestedCommands) {
+  const availableCommands = new Set(getAllCommandAccessNames());
+  const grantAll = requestedCommands.includes('all');
+  const uniqueCommands = [...new Set(requestedCommands.filter((value) => value !== 'all'))];
+
+  return {
+    grantAll,
+    grantCommands: grantAll
+      ? [...availableCommands]
+      : uniqueCommands.filter((commandName) => availableCommands.has(commandName)),
+    unsupportedCommands: uniqueCommands.filter((commandName) => !availableCommands.has(commandName))
+  };
 }
 
 module.exports = {
@@ -77,27 +92,36 @@ module.exports = {
       return message.reply('❌ Usage: `~grantaccess @user [command1] [command2] [command3...] | all`');
     }
 
+    const { grantAll, grantCommands, unsupportedCommands } = getRequestedGrantCommands(requestedCommands);
     const uniqueCommands = [...new Set(requestedCommands.filter((value) => value !== 'all'))];
-    if (uniqueCommands.length === 0) {
+    if (!grantAll && uniqueCommands.length === 0) {
       return message.reply('❌ Usage: `~grantaccess @user [command1] [command2] [command3...] | all`');
     }
 
-    const unsupportedCommands = uniqueCommands.filter((commandName) => !GRANTABLE_COMMANDS.has(commandName));
-    const grantCommands = uniqueCommands.filter((commandName) => GRANTABLE_COMMANDS.has(commandName));
     if (grantCommands.length === 0) {
-      return message.reply('❌ Access can only be granted for `setnick`, `execute`, or `say`.');
+      return message.reply('❌ No grantable commands were found. Owner-only commands cannot be granted.');
     }
 
     const grantedNow = [];
     const alreadyGranted = [];
 
-    for (const commandName of grantCommands) {
-      const wasAlreadyGranted = await isTempAccessGranted(target.id, commandName);
-      await grantTempAccess(target.id, commandName);
-      if (wasAlreadyGranted) {
-        alreadyGranted.push(commandName);
-      } else {
-        grantedNow.push(commandName);
+    if (grantAll) {
+      const existingCount = (await Promise.all(grantCommands.map((commandName) => isTempAccessGranted(target.id, commandName))))
+        .filter(Boolean).length;
+      const newCount = await grantAllTempAccess(target.id, grantCommands);
+      grantedNow.push(`${newCount} commands`);
+      if (existingCount > 0) {
+        alreadyGranted.push(`${existingCount} commands`);
+      }
+    } else {
+      for (const commandName of grantCommands) {
+        const wasAlreadyGranted = await isTempAccessGranted(target.id, commandName);
+        await grantTempAccess(target.id, commandName);
+        if (wasAlreadyGranted) {
+          alreadyGranted.push(commandName);
+        } else {
+          grantedNow.push(commandName);
+        }
       }
     }
 
@@ -107,9 +131,11 @@ module.exports = {
       .setDescription(
         grantedNow.length > 0 || alreadyGranted.length > 0
           ? [
-              `Approved access for ${target} has been updated for the permitted commands.`,
-              grantedNow.length > 0 ? `Granted: ${grantedNow.map((commandName) => `\`${commandName}\``).join(', ')}.` : null,
-              alreadyGranted.length > 0 ? `Already existed: ${alreadyGranted.map((commandName) => `\`${commandName}\``).join(', ')}.` : null,
+              grantAll
+                ? `Granted access to ${target} for all non-owner-only commands. Owner-only commands remain restricted.`
+                : `Approved access for ${target} has been updated for the permitted commands.`,
+              grantedNow.length > 0 ? `Granted: ${grantAll ? grantedNow[0] : grantedNow.map((commandName) => `\`${commandName}\``).join(', ')}.` : null,
+              alreadyGranted.length > 0 ? `Already existed: ${grantAll ? alreadyGranted[0] : alreadyGranted.map((commandName) => `\`${commandName}\``).join(', ')}.` : null,
               unsupportedCommands.length > 0 ? `Ignored: ${unsupportedCommands.map((commandName) => `\`${commandName}\``).join(', ')}.` : null
             ].filter(Boolean).join(' ')
           : `No valid command names were provided for ${target}.`
@@ -119,3 +145,6 @@ module.exports = {
     return message.reply({ embeds: [embed] });
   }
 };
+
+module.exports.getAllCommandAccessNames = getAllCommandAccessNames;
+module.exports.getRequestedGrantCommands = getRequestedGrantCommands;

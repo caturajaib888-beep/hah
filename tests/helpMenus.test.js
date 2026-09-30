@@ -11,7 +11,7 @@ const banallCommand = require('../commands/admin only/banall');
 const disableCommand = require('../commands/admin only/disable');
 const grantAccessCommand = require('../commands/admin only/grantaccess');
 const revokeAccessCommand = require('../commands/admin only/revokeaccess');
-const { deleteMessagesInBatches, sendResponse } = require('../commands/admin only/purge');
+const { deleteMessagesInBatches, sendResponse, execute: executePurge } = require('../commands/admin only/purge');
 const { deleteAllMessages } = require('../commands/admin only/nuke');
 const balanceCommand = require('../commands/onepiece fun/coins');
 const coinToggleCommand = require('../commands/admin only/coin');
@@ -81,6 +81,17 @@ test('moderation commands declare their own required permission bits', () => {
   assert.deepEqual(revokeAccessCommand.requiredPermissions, [PermissionFlagsBits.ManageGuild]);
 });
 
+test('grantaccess all includes standard commands but excludes owner-only commands', () => {
+  const selection = grantAccessCommand.getRequestedGrantCommands(['all']);
+
+  assert.equal(selection.grantAll, true);
+  assert.ok(selection.grantCommands.includes('ping'));
+  assert.ok(selection.grantCommands.includes('execute'));
+  assert.ok(!selection.grantCommands.includes('nuke'));
+  assert.ok(!selection.grantCommands.includes('banall'));
+  assert.ok(!selection.grantCommands.includes('grantaccess'));
+});
+
 test('protected guild config and safety validation are enforced', () => {
   assert.deepEqual(getProtectedGuildIds({ PROTECTED_GUILD_ID: '123456789012345678,987654321098765432' }), ['123456789012345678', '987654321098765432']);
   assert.deepEqual(getProtectedGuildIds({ PROTECTED_GUILD_IDS: '1502005946698825789,1510642739476168934' }), ['1502005946698825789', '1510642739476168934']);
@@ -144,6 +155,43 @@ test('purge sends the result to the channel when its command message was deleted
 
   await sendResponse(message, { content: 'Deleted **26** messages.' });
   assert.deepEqual(sent, [{ content: 'Deleted **26** messages.', ephemeral: undefined, allowedMentions: undefined }]);
+});
+
+test('purge sends its success response to the channel if the command message was deleted', async () => {
+  const previousTrueOwnerId = process.env.TRUE_OWNER_ID;
+  const previousOwnerIds = process.env.OWNER_IDS;
+  process.env.TRUE_OWNER_ID = '123456789012345678';
+  process.env.OWNER_IDS = '123456789012345678';
+
+  const sent = [];
+  const message = {
+    author: { id: '123456789012345678' },
+    guild: { id: 'guild-id', members: { me: { permissions: { has: () => true } } } },
+    channel: {
+      bulkDelete: async () => ({ size: 1 }),
+      send: async (payload) => {
+        sent.push(payload);
+        return payload;
+      }
+    },
+    reply: async () => {
+      const error = new Error('Invalid Form Body: MESSAGE_REFERENCE_UNKNOWN_MESSAGE');
+      error.code = 50035;
+      throw error;
+    }
+  };
+
+  try {
+    await executePurge(message, ['1']);
+  } finally {
+    if (previousTrueOwnerId === undefined) delete process.env.TRUE_OWNER_ID;
+    else process.env.TRUE_OWNER_ID = previousTrueOwnerId;
+    if (previousOwnerIds === undefined) delete process.env.OWNER_IDS;
+    else process.env.OWNER_IDS = previousOwnerIds;
+  }
+
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].embeds[0].data.title, '🧹 Channel Purged');
 });
 
 test('nuke falls back to individual deletions when bulk delete hits the 14-day limit', async () => {

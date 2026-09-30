@@ -21,7 +21,8 @@ function buildEconomySnapshotEntry({ userId, user, baitRow, dailyRow }) {
       epic_bait: Number(safeBaits.epic_bait || 0),
       legendary_bait: Number(safeBaits.legendary_bait || 0),
       mythical_bait: Number(safeBaits.mythical_bait || 0),
-      owner_bait: Number(safeBaits.owner_bait || 0)
+      owner_bait: Number(safeBaits.owner_bait || 0),
+      love_bait: Number(safeBaits.love_bait || 0)
     },
     dailyStreak: Number(safeDaily.dailyStreak || 0),
     lastUpdated: new Date().toISOString()
@@ -47,7 +48,7 @@ function hasEconomySnapshotData(user = {}, baitRow = {}, dailyRow = {}, extra = 
 async function saveEconomySnapshotToFile({ db, filePath, includeOnlyWithData = true }) {
   const rows = await new Promise((resolve, reject) => {
     db.all(
-      `SELECT u.userId, u.coins, u.bounty, u.credits, u.tokens, u.messageCount, b.bait_containers, b.common_bait, b.uncommon_bait, b.rare_bait, b.epic_bait, b.legendary_bait, b.mythical_bait, b.owner_bait, d.dailyStreak
+      `SELECT u.userId, u.coins, u.bounty, u.credits, u.tokens, u.messageCount, b.bait_containers, b.common_bait, b.uncommon_bait, b.rare_bait, b.epic_bait, b.legendary_bait, b.mythical_bait, b.owner_bait, b.love_bait, d.dailyStreak
        FROM users u
        LEFT JOIN baits b ON b.userId = u.userId
        LEFT JOIN daily_rewards d ON d.userId = u.userId
@@ -77,7 +78,8 @@ async function saveEconomySnapshotToFile({ db, filePath, includeOnlyWithData = t
       epic_bait: row.epic_bait,
       legendary_bait: row.legendary_bait,
       mythical_bait: row.mythical_bait,
-      owner_bait: row.owner_bait
+      owner_bait: row.owner_bait,
+      love_bait: row.love_bait
     };
     const dailyRow = { dailyStreak: row.dailyStreak };
 
@@ -117,7 +119,8 @@ function normalizeSnapshotEntry(entry = {}) {
       epic_bait: Number(baitInventory.epic_bait ?? baitInventory.epicBait ?? 0),
       legendary_bait: Number(baitInventory.legendary_bait ?? baitInventory.legendaryBait ?? 0),
       mythical_bait: Number(baitInventory.mythical_bait ?? baitInventory.mythicalBait ?? 0),
-      owner_bait: Number(baitInventory.owner_bait ?? baitInventory.ownerBait ?? 0)
+      owner_bait: Number(baitInventory.owner_bait ?? baitInventory.ownerBait ?? 0),
+      love_bait: Number(baitInventory.love_bait ?? baitInventory.loveBait ?? 0)
     },
     dailyStreak: Number(entry.dailyStreak ?? entry.daily_streak ?? entry.streak ?? 0)
   };
@@ -165,11 +168,11 @@ async function restoreEconomySnapshotFromFile({ db, filePath }) {
 
     await new Promise((resolve, reject) => {
       const baitQuery = hasBaitsLastUpdated
-          ? `INSERT OR REPLACE INTO baits (userId, bait_containers, common_bait, uncommon_bait, rare_bait, epic_bait, legendary_bait, mythical_bait, owner_bait, lastUpdated)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
-          : `INSERT OR REPLACE INTO baits (userId, bait_containers, common_bait, uncommon_bait, rare_bait, epic_bait, legendary_bait, mythical_bait, owner_bait)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-          db.run(baitQuery, [entry.userId, entry.baitInventory.bait_containers, entry.baitInventory.common_bait, entry.baitInventory.uncommon_bait, entry.baitInventory.rare_bait, entry.baitInventory.epic_bait, entry.baitInventory.legendary_bait, entry.baitInventory.mythical_bait, entry.baitInventory.owner_bait], (err) => (err ? reject(err) : resolve()));
+          ? `INSERT OR REPLACE INTO baits (userId, bait_containers, common_bait, uncommon_bait, rare_bait, epic_bait, legendary_bait, mythical_bait, owner_bait, love_bait, lastUpdated)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+          : `INSERT OR REPLACE INTO baits (userId, bait_containers, common_bait, uncommon_bait, rare_bait, epic_bait, legendary_bait, mythical_bait, owner_bait, love_bait)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+          db.run(baitQuery, [entry.userId, entry.baitInventory.bait_containers, entry.baitInventory.common_bait, entry.baitInventory.uncommon_bait, entry.baitInventory.rare_bait, entry.baitInventory.epic_bait, entry.baitInventory.legendary_bait, entry.baitInventory.mythical_bait, entry.baitInventory.owner_bait, entry.baitInventory.love_bait], (err) => (err ? reject(err) : resolve()));
     });
 
     await new Promise((resolve, reject) => {

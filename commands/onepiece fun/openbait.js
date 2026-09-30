@@ -1,8 +1,10 @@
 const { EmbedBuilder } = require('discord.js');
 const { ensureUser, ensureBaits, getBaits, addBait, addBounty, deductBait, applyBountyPassiveBonus } = require('../../database');
+const { getTrueOwnerId } = require('../../utils/owner');
+const { getRareBaitDrops } = require('../../utils/baitDrops');
 
-function openBait() {
-  const bountyReward = Math.floor(Math.random() * 1500) + 500;
+function openBait(userId, trueOwnerId = getTrueOwnerId(), random = Math.random) {
+  const bountyReward = Math.floor(random() * 1500) + 500;
   const rewards = [
     { type: 'common_bait', chance: 100 },
     { type: 'bounty', amount: bountyReward, chance: 100 }
@@ -18,11 +20,12 @@ function openBait() {
   ];
 
   for (const bait of randomBaits) {
-    if (Math.random() * 100 < bait.chance) {
+    if (random() * 100 < bait.chance) {
       rewards.push({ type: bait.type, chance: bait.chance });
     }
   }
 
+  rewards.push(...getRareBaitDrops(userId, trueOwnerId, random));
   return rewards;
 }
 
@@ -46,7 +49,7 @@ function parseOpenAmount(input, available) {
 
 function summarizeRewards(rewardTotals) {
   const lines = [];
-  const baitOrder = ['common_bait', 'uncommon_bait', 'rare_bait', 'epic_bait', 'legendary_bait', 'mythical_bait', 'owner_bait'];
+  const baitOrder = ['common_bait', 'uncommon_bait', 'rare_bait', 'epic_bait', 'legendary_bait', 'mythical_bait', 'owner_bait', 'love_bait'];
 
   for (const baitType of baitOrder) {
     const amount = rewardTotals[baitType] || 0;
@@ -97,11 +100,12 @@ module.exports = {
         legendary_bait: 0,
         mythical_bait: 0,
         owner_bait: 0,
+        love_bait: 0,
         bounty: 0,
       };
 
       for (let index = 0; index < openAmount; index += 1) {
-        const rewards = openBait();
+        const rewards = openBait(message.author.id);
 
         for (const reward of rewards) {
           if (reward.type === 'bounty') {
@@ -118,7 +122,7 @@ module.exports = {
         await addBounty(message.author.id, rewardTotals.bounty);
       }
 
-      const baitTypes = ['common_bait', 'uncommon_bait', 'rare_bait', 'epic_bait', 'legendary_bait', 'mythical_bait', 'owner_bait'];
+      const baitTypes = ['common_bait', 'uncommon_bait', 'rare_bait', 'epic_bait', 'legendary_bait', 'mythical_bait', 'owner_bait', 'love_bait'];
       for (const baitType of baitTypes) {
         const amount = rewardTotals[baitType] || 0;
         if (amount > 0) {
@@ -144,3 +148,6 @@ module.exports = {
     }
   }
 };
+
+module.exports.openBait = openBait;
+module.exports.summarizeRewards = summarizeRewards;

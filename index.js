@@ -20,6 +20,7 @@ const { findBannedImage, isImageAttachment } = require('./utils/imageBan');
 const { isBotCommandAllowedWhileDisabled, isCoinEconomyEnabled, isCoinCommandAllowedWhileDisabled } = require('./utils/commandAccess');
 const { handleTicketInteraction } = require('./utils/ticketSystem');
 const { startDashboard } = require('./dashboard');
+const { COIN_DROP_CHANCE } = require('./utils/baitDrops');
 
 const safetyCheck = validateBotSafetyConfig(process.env);
 if (!safetyCheck.ok) {
@@ -1178,7 +1179,7 @@ client.on('messageCreate', async (message) => {
 
       if (coinEconomyEnabled) {
         try {
-          if (Math.random() < 0.01) {
+          if (Math.random() < COIN_DROP_CHANCE) {
             await addCoins(message.author.id, 1, 'coin_drop');
             const updated = await getUser(message.author.id);
             await sendMessageReply(message, `💰 Coin Drop! ${message.author} found 1 coin! You now have **${updated.coins || 0}** coin(s).`);

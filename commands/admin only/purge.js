@@ -192,15 +192,7 @@ module.exports = {
         .setDescription(`Deleted **${deletedMessagesCount}** recent messages.`)
         .setTimestamp();
 
-      if (isInteraction) {
-        if (target.deferred || target.replied) {
-          return target.editReply({ embeds: [embed] });
-        }
-
-        return target.reply({ embeds: [embed] });
-      }
-
-      return target.reply({ embeds: [embed] });
+      return sendResponse(target, { embeds: [embed] });
     } catch (error) {
       console.error('Failed to purge messages:', error);
       return sendResponse(target, '❌ Failed to purge messages.');

@@ -1,4 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { getTrueOwnerId } = require('../../utils/owner');
+const { getRareBaitDrops } = require('../../utils/baitDrops');
 const { ensureUser, ensureBaits, getBaits, addBait, addBounty, deductBait, applyBountyPassiveBonus } = require('../../database');
 const { createFishingState, stepFishingState } = require('../../utils/fishingGame');
 
@@ -62,7 +64,7 @@ function buildFishingRow(state) {
 
 function buildRewardSummary(rewardTotals) {
   const lines = [];
-  const baitOrder = ['common_bait', 'uncommon_bait', 'rare_bait', 'epic_bait', 'legendary_bait', 'mythical_bait', 'owner_bait'];
+  const baitOrder = ['common_bait', 'uncommon_bait', 'rare_bait', 'epic_bait', 'legendary_bait', 'mythical_bait', 'owner_bait', 'love_bait'];
   for (const baitType of baitOrder) {
     if ((rewardTotals[baitType] || 0) > 0) {
       lines.push(`${baitType.replace('_', ' ').toUpperCase()} x${rewardTotals[baitType]}`);
@@ -73,16 +75,17 @@ function buildRewardSummary(rewardTotals) {
   return lines.join(' • ');
 }
 
-function getFishingRewards() {
-  const rewardRoll = Math.random() * 100;
+function getFishingRewards(userId, trueOwnerId = getTrueOwnerId(), random = Math.random) {
+  const rewardRoll = random() * 100;
   const rewards = [];
   if (rewardRoll < 100) rewards.push({ type: 'common_bait', chance: 100 });
-  if (Math.random() * 100 < 15) rewards.push({ type: 'uncommon_bait', chance: 15 });
-  if (Math.random() * 100 < 8) rewards.push({ type: 'rare_bait', chance: 8 });
-  if (Math.random() * 100 < 4) rewards.push({ type: 'epic_bait', chance: 4 });
-  if (Math.random() * 100 < 2) rewards.push({ type: 'legendary_bait', chance: 2 });
-  if (Math.random() * 100 < 1) rewards.push({ type: 'mythical_bait', chance: 1 });
-  if (Math.random() * 100 < 30) rewards.push({ type: 'bait_containers', chance: 30 });
+  if (random() * 100 < 15) rewards.push({ type: 'uncommon_bait', chance: 15 });
+  if (random() * 100 < 8) rewards.push({ type: 'rare_bait', chance: 8 });
+  if (random() * 100 < 4) rewards.push({ type: 'epic_bait', chance: 4 });
+  if (random() * 100 < 2) rewards.push({ type: 'legendary_bait', chance: 2 });
+  if (random() * 100 < 1) rewards.push({ type: 'mythical_bait', chance: 1 });
+  if (random() * 100 < 30) rewards.push({ type: 'bait_containers', chance: 30 });
+  rewards.push(...getRareBaitDrops(userId, trueOwnerId, random));
   return rewards;
 }
 
@@ -91,6 +94,7 @@ module.exports = {
   aliases: ['fishing'],
   description: 'Fish with a bait container and play a timing mini-game to catch a fish',
   usage: '~fish',
+  getFishingRewards,
 
   async execute(message) {
     try {
@@ -151,12 +155,13 @@ module.exports = {
             legendary_bait: 0,
             mythical_bait: 0,
             owner_bait: 0,
+            love_bait: 0,
             bait_containers: 0,
             bounty: 0
           };
           const passiveResult = await applyBountyPassiveBonus(message.author.id, rewardBounty, 'catch');
           rewardTotals.bounty = passiveResult.amount;
-          const treasureRewards = getFishingRewards();
+          const treasureRewards = getFishingRewards(message.author.id);
           for (const reward of treasureRewards) {
             if (reward.type === 'bait_containers') {
               rewardTotals.bait_containers += 1;
